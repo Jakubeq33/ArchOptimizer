@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Computer Health</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .tabs { display:flex; gap:8px; margin:14px 0 8px; flex-wrap:wrap; }
+    .tab-btn {
+      border:1px solid #2b2d33; background:#15161a; color:#e7e9f1;
+      padding:10px 14px; border-radius:12px; cursor:pointer;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.04) inset;
+      transition: transform .08s ease, background .15s ease, box-shadow .15s ease;
+      user-select:none;
+    }
+    .tab-btn:hover { transform: translateY(-1px); }
+    .tab-btn.active {
+      background: linear-gradient(135deg,#1e2130, #2b2f45);
+      box-shadow: 0 6px 18px rgba(0,0,0,.35), 0 0 0 1px rgba(105,140,255,.35) inset;
+      border-color: rgba(105,140,255,.45);
+    }
+    .hidden { display:none !important; }
+
+    .section-title { margin-top: 10px; }
+    .panel {
+      border:1px solid #2b2d33; border-radius:14px; padding:12px;
+      background:rgba(20,21,26,.65);
+      box-shadow: 0 10px 24px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.03);
+    }
+    .toolbar { display:flex; gap:8px; flex-wrap: wrap; margin:10px 0; }
+    .btn { padding:9px 12px; border-radius:10px; border:1px solid #2b2d33; background:#17181d; color:#e7e9f1; cursor:pointer; }
+    .btn-primary { border-color: rgba(105,140,255,.45); box-shadow: 0 0 0 1px rgba(105,140,255,.25) inset; }
+    .btn-ghost { background: transparent; }
+    .danger-ghost { border-color: rgba(255,92,92,.45); color:#ffd0d0; }
+    .opt { margin-right:14px; }
+    .table-wrap { overflow:auto; border-radius:12px; border:1px solid #2b2d33; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { padding:8px 10px; border-bottom:1px solid #23242a; text-align:left; }
+    .log { height:180px; overflow:auto; background:#101114; color:#d9dcf5; border:1px solid #2b2d33; border-radius:12px; padding:10px; }
+    .subnote { font-size:12px; opacity:.8; margin-left:6px; }
+  </style>
+</head>
+<body class="dash-body">
+  <div class="bg-vignette"></div>
+
+  <div class="dash-wrap">
+    <div class="dash-card">
+      <div class="dash-avatar"><img id="dashAvatar" alt="Your avatar" /></div>
+      <h2 class="dash-greeting" id="dashGreeting">Witaj</h2>
+
+      <h3 class="section-title">Computer Health</h3>
+      <div class="health-grid" id="healthGrid"></div>
+
+      <div class="tabs">
+        <button class="tab-btn active" id="tabTK">Task-Killer</button>
+        <button class="tab-btn" id="tabDC">Disk-Cleaner</button>
+        <button class="tab-btn" id="tabSL">Slowless Cleaner</button>
+        <div style="flex:1"></div>
+        <button class="btn btn-ghost" id="logoutBtn">Wyloguj</button>
+      </div>
+
+      <!-- Task-Killer -->
+      <div id="viewTK" class="panel">
+        <div class="toolbar">
+          <button class="btn btn-primary" id="btnRefreshTasks">Odśwież listę</button>
+          <button class="btn btn-ghost danger-ghost" id="btnKill">Zabij zaznaczone</button>
+        </div>
+
+        <div class="table-wrap">
+          <table id="procTable">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="checkAll"></th>
+                <th>PID</th>
+                <th>Nazwa</th>
+                <th>CPU %</th>
+                <th>RAM MB</th>
+                <th>Ścieżka</th>
+              </tr>
+            </thead>
+            <tbody id="procTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Disk-Cleaner -->
+      <div id="viewDC" class="panel hidden">
+        <div class="options" id="cleanOptions" style="margin-bottom:8px;">
+          <div style="margin-bottom:6px;">
+            <label class="opt"><input type="checkbox" id="optDownloads" checked> Pobrane</label>
+            <label class="opt"><input type="checkbox" id="optRecycle" checked> Kosz</label>
+            <label class="opt"><input type="checkbox" id="optTemp" checked> Tymczasowe pliki</label>
+            <label class="opt"><input type="checkbox" id="optBig"> Duże pliki (100MB+)</label>
+          </div>
+          <div style="margin-top:6px;">
+            <label class="opt"><input type="checkbox" id="optBrowserCache" checked> Cache przeglądarek</label>
+            <label class="opt"><input type="checkbox" id="optBrowserCookies"> Cookies przeglądarek</label>
+            <label class="opt"><input type="checkbox" id="optBrowserForce"> Wymuś zamknięcie przeglądarek</label>
+            <span class="subnote">(* zamknij przeglądarki, jeśli nie używasz „Wymuś”)</span>
+          </div>
+        </div>
+        <div class="toolbar">
+          <button class="btn btn-primary" id="btnScan">Skanuj</button>
+          <button class="btn btn-ghost danger-ghost" id="btnClean">Wyczyść</button>
+        </div>
+      </div>
+
+      <!-- Slowless Cleaner -->
+      <div id="viewSL" class="panel hidden">
+        <div class="toolbar">
+          <button class="btn btn-primary" id="btnSlowScan">Skanuj spowalniacze</button>
+          <button class="btn btn-ghost danger-ghost" id="btnSlowKill">Kill zaznaczone procesy</button>
+          <button class="btn btn-ghost" id="btnDisableStartup">Wyłącz zaznaczone autostarty</button>
+        </div>
+
+        <h4 style="margin:6px 0;">Procesy mogące spowalniać</h4>
+        <div class="table-wrap" style="margin-bottom:10px;">
+          <table id="slowProcTable">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="slowCheckAll"></th>
+                <th>PID</th>
+                <th>Nazwa</th>
+                <th>CPU%</th>
+                <th>RAM MB</th>
+                <th>Etykieta</th>
+                <th>Powód</th>
+              </tr>
+            </thead>
+            <tbody id="slowProcBody"></tbody>
+          </table>
+        </div>
+
+        <h4 style="margin:6px 0;">Autostart (Rejestr / Startup)</h4>
+        <div class="table-wrap">
+          <table id="slowStartTable">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="startCheckAll"></th>
+                <th>Typ</th>
+                <th>Nazwa</th>
+                <th>Scope/Folder</th>
+                <th>Exe / Ścieżka</th>
+                <th>Etykieta</th>
+                <th>Powód</th>
+              </tr>
+            </thead>
+            <tbody id="slowStartBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3 class="section-title" style="margin-top:14px;">Log</h3>
+      <pre class="log" id="log"></pre>
+    </div>
+  </div>
+
+<script>
+  // ---------- Auth ----------
+  function initUser(){
+    const raw = localStorage.getItem('arch_auth_user');
+    const authed = localStorage.getItem('arch_is_logged_in') === '1';
+    if(!raw || !authed){ location.href = 'index.html'; return null; }
+    const user = JSON.parse(raw);
+    const img = document.getElementById('dashAvatar');
+    const greet = document.getElementById('dashGreeting');
+
+    if(user.avatar){ img.src = user.avatar; }
+    else{
+      const initials = (user.name||'U').split(' ').map(s=>s[0]?.toUpperCase()).slice(0,2).join('');
+      const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'>
+        <rect width='100%' height='100%' fill='#1f2024'/>
+        <text x='50%' y='55%' font-family='Inter,Segoe UI,Arial' font-weight='700' font-size='140' fill='#e7e9f1' text-anchor='middle'>${initials}</text>
+      </svg>`;
+      img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+    }
+    const h = new Date().getHours();
+    const part = h < 12 ? 'Dzień dobry' : (h < 18 ? 'Dzień dobry' : 'Dobry wieczór');
+    document.getElementById('dashGreeting').textContent = `${part} ${user.name || ''}`.trim();
+
+    document.getElementById('logoutBtn').addEventListener('click', ()=>{
+      localStorage.removeItem('arch_is_logged_in'); location.href = 'index.html';
+    });
+    return user;
+  }
+
+  // ---------- Helpers ----------
+  const api = () => (window.pywebview && window.pywebview.api) || null;
+  const logEl = document.getElementById('log');
+  function log(msg){
+    const time = new Date().toLocaleTimeString();
+    logEl.textContent = `[${time}] ${msg}\n` + logEl.textContent.slice(0, 8000);
+  }
+  const human = (n) => {
+    if (n == null) return '–';
+    const units = ['B','KB','MB','GB','TB'];
+    let s = Number(n), i = 0;
+    while (s >= 1024 && i < units.length-1){ s/=1024; i++; }
+    return s.toFixed(1)+' '+units[i];
+  };
+
+  // ---------- Health ----------
+  function card(label, value, sub=''){
+    return `<div class="health-card">
+      <div class="hc-label">${label}</div>
+      <div class="hc-value">${value}</div>
+      ${sub ? `<div class="hc-sub">${sub}</div>` : ''}
+    </div>`;
+  }
+  async function refreshHealth(){
+    if(!api()) return;
+    const data = await api().get_health();
+    const g = document.getElementById('healthGrid');
+    const items = [];
+    items.push(card('CPU', `${data.cpu.total_percent.toFixed(0)}%`, `${data.cpu.per_core.length} rdzeni`));
+    items.push(card('RAM', `${data.ram.percent.toFixed(0)}%`, `${data.ram.used_gb} / ${data.ram.total_gb} GB`));
+    items.push(card('SWAP', `${data.swap.percent.toFixed(0)}%`, `${data.swap.used_gb} / ${data.swap.total_gb} GB`));
+    items.push(card('Dysk', `${data.disk.total_percent.toFixed(0)}%`,
+      (data.disk.partitions || []).slice(0,2).map(p=>`${p.mount} ${p.percent}%`).join(' • ')));
+    if (data.gpu && data.gpu.available && data.gpu.items.length){
+      const g0 = data.gpu.items[0];
+      items.push(card('GPU', `${g0.load_percent.toFixed(0)}%`, `${g0.mem_used_gb} / ${g0.mem_total_gb} GB`));
+    } else items.push(card('GPU', `–`, `brak / GPUtil`));
+    if (data.battery && data.battery.percent !== undefined){
+      items.push(card('Bateria', `${data.battery.percent}%`, data.battery.plugged ? 'Zasilanie' : 'Na baterii'));
+    }
+    g.innerHTML = items.join('');
+  }
+
+  // ---------- Task-Killer ----------
+  const tbody = document.getElementById('procTbody');
+  const checkAll = document.getElementById('checkAll');
+  function rowHTML(p){
+    return `<tr>
+      <td><input type="checkbox" class="row-check" data-pid="${p.pid}"></td>
+      <td>${p.pid}</td>
+      <td title="${p.name}">${p.name}</td>
+      <td>${(p.cpu ?? 0).toFixed(1)}</td>
+      <td>${(p.memory_mb ?? 0).toFixed(1)}</td>
+      <td title="${p.exe || ''}">${(p.exe||'').split('\\').slice(-3).join('\\')}</td>
+    </tr>`;
+  }
+  async function refreshTasks(){
+    if(!api()) return log('API not ready (pywebview).');
+    const data = await api().list_processes();
+    tbody.innerHTML = (data.items || []).map(rowHTML).join('');
+    log(`Zaktualizowano listę procesów: ${data.count || 0}`);
+  }
+  async function killSelected(){
+    if(!api()) return log('API not ready.');
+    const pids = Array.from(document.querySelectorAll('.row-check:checked')).map(el => +el.dataset.pid);
+    if(!pids.length){ log('Zaznacz procesy do zabicia.'); return; }
+    const res = await api().kill_processes(pids);
+    log(`Kill: ${JSON.stringify(res.results).slice(0, 340)}…`);
+    refreshTasks();
+  }
+  document.getElementById('btnRefreshTasks').addEventListener('click', refreshTasks);
+  document.getElementById('btnKill').addEventListener('click', killSelected);
+  checkAll.addEventListener('change', ()=> {
+    document.querySelectorAll('.row-check').forEach(ch=> ch.checked = checkAll.checked);
+  });
+
+  // ---------- Disk-Cleaner ----------
+  function getOptions(){
+    return {
+      downloads: document.getElementById('optDownloads').checked,
+      recycle:   document.getElementById('optRecycle').checked,
+      temp:      document.getElementById('optTemp').checked,
+      big:       document.getElementById('optBig').checked,
+      browser_cache:   document.getElementById('optBrowserCache').checked,
+      browser_cookies: document.getElementById('optBrowserCookies').checked,
+      browser_force_close: document.getElementById('optBrowserForce').checked
+    };
+  }
+  document.getElementById('btnScan').addEventListener('click', async ()=>{
+    if(!api()) return log('API not ready.');
+    const opts = getOptions();
+    const res = await api().scan_cleanup(opts);
+    const t = res.totals || {};
+    const big = (res.lists && res.lists.big_top) || [];
+    log(
+      `Skan → Pobrane: ${human(t.downloads_bytes)} | Temp: ${human(t.temp_bytes)} | Kosz: ${t.recycle_bytes===null?'?':human(t.recycle_bytes)} | Duże: ${human(t.big_bytes)} | Cache przeglądarek: ${human(t.browsers_cache_bytes)} | Cookies: ${human(t.browsers_cookie_bytes)} | Suma: ${human(t.sum_known_bytes)}`
+    );
+    const browsers = (res.lists && res.lists.browsers) || [];
+    if (browsers.length){
+      log('Profil(e) przeglądarek:');
+      browsers.slice(0,25).forEach(b => {
+        log(` - ${b.browser} :: ${b.profile} | cache=${human(b.cache_bytes)} | cookies=${human(b.cookie_bytes)}${b.cookie_path?' | '+b.cookie_path:''}`);
+      });
+    }
+    if (big.length){
+      log('Top dużych plików:'); big.slice(0,10).forEach(it => log(` - ${it.size} :: ${it.path}`));
+    }
+  });
+  document.getElementById('btnClean').addEventListener('click', async ()=>{
+    if(!api()) return log('API not ready.');
+    const opts = getOptions();
+    const res = await api().run_cleanup(opts);
+    log(`Czyszczenie zakończone. Zwolniono: ${res.freed_human}`);
+  });
+
+  // ---------- Slowless Cleaner ----------
+  const slowProcBody  = document.getElementById('slowProcBody');
+  const slowStartBody = document.getElementById('slowStartBody');
+  const slowCheckAll  = document.getElementById('slowCheckAll');
+  const startCheckAll = document.getElementById('startCheckAll');
+
+  function slowProcRow(p){
+    return `<tr>
+      <td><input type="checkbox" class="slow-row" data-pid="${p.pid}"></td>
+      <td>${p.pid}</td>
+      <td title="${p.exe||''}">${p.name||''}</td>
+      <td>${(p.cpu??0).toFixed(1)}</td>
+      <td>${(p.memory_mb??0).toFixed(1)}</td>
+      <td>${p.label||''}</td>
+      <td>${p.reason||''}</td>
+    </tr>`;
+  }
+  function slowStartRow(s){
+    const exe = s.exe || s.path || s.command || '';
+    return `<tr>
+      <td><input type="checkbox" class="start-row"
+                 data-type="${s.type}" data-scope="${s.scope||''}"
+                 data-subkey="${s.subkey||''}" data-name="${s.name||''}"
+                 data-path="${s.path||''}"></td>
+      <td>${s.type}</td>
+      <td>${s.name||''}</td>
+      <td>${s.scope? (s.scope+' / '+(s.subkey||'')) : (s.folder||'')}</td>
+      <td title="${exe}">${exe.split('\\').slice(-3).join('\\')}</td>
+      <td>${s.label||''}</td>
+      <td>${s.reason||''}</td>
+    </tr>`;
+  }
+
+  async function slowScan(){
+    if(!api()) return log('API not ready.');
+    const res = await api().scan_slowless(true);
+    slowProcBody.innerHTML  = (res.running || []).map(slowProcRow).join('');
+    slowStartBody.innerHTML = (res.startup || []).map(slowStartRow).join('');
+    log(`Slowless: znaleziono procesów ${res.running?.length||0}, autostartów ${res.startup?.length||0}`);
+  }
+  async function slowKill(){
+    if(!api()) return log('API not ready.');
+    const pids = Array.from(document.querySelectorAll('.slow-row:checked')).map(el => +el.dataset.pid);
+    if(!pids.length){ log('Zaznacz procesy do zabicia.'); return; }
+    const res = await api().kill_processes(pids);
+    log(`Slowless Kill: ${JSON.stringify(res.results).slice(0, 340)}…`);
+    slowScan();
+  }
+  async function disableStartup(){
+    if(!api()) return log('API not ready.');
+    const rows = Array.from(document.querySelectorAll('.start-row:checked')).map(el => ({
+      type: el.dataset.type,
+      scope: el.dataset.scope,
+      subkey: el.dataset.subkey,
+      name: el.dataset.name,
+      path: el.dataset.path
+    }));
+    if(!rows.length){ log('Zaznacz wpisy autostartu do wyłączenia.'); return; }
+    const res = await api().disable_startup_batch(rows);
+    const msgs = res.results.map(r => `${r.type}:${r.scope||''}:${r.target} -> ${r.ok?'OK':r.error}`).slice(0,12).join(' | ');
+    log(`Wyłącz autostart: ${msgs}${res.results.length>12?' …':''}`);
+    slowScan();
+  }
+
+  document.getElementById('btnSlowScan').addEventListener('click', slowScan);
+  document.getElementById('btnSlowKill').addEventListener('click', slowKill);
+  document.getElementById('btnDisableStartup').addEventListener('click', disableStartup);
+
+  slowCheckAll.addEventListener('change', ()=> {
+    document.querySelectorAll('.slow-row').forEach(ch=> ch.checked = slowCheckAll.checked);
+  });
+  startCheckAll.addEventListener('change', ()=> {
+    document.querySelectorAll('.start-row').forEach(ch=> ch.checked = startCheckAll.checked);
+  });
+
+  // ---------- Tabs ----------
+  const tabTK = document.getElementById('tabTK');
+  const tabDC = document.getElementById('tabDC');
+  const tabSL = document.getElementById('tabSL');
+  const viewTK = document.getElementById('viewTK');
+  const viewDC = document.getElementById('viewDC');
+  const viewSL = document.getElementById('viewSL');
+
+  function setTab(which){
+    tabTK.classList.toggle('active', which==='TK');
+    tabDC.classList.toggle('active', which==='DC');
+    tabSL.classList.toggle('active', which==='SL');
+    viewTK.classList.toggle('hidden', which!=='TK');
+    viewDC.classList.toggle('hidden', which!=='DC');
+    viewSL.classList.toggle('hidden', which!=='SL');
+  }
+  tabTK.addEventListener('click', ()=> setTab('TK'));
+  tabDC.addEventListener('click', ()=> setTab('DC'));
+  tabSL.addEventListener('click', ()=> setTab('SL'));
+
+  // ---------- Start ----------
+  function start(){
+    initUser();
+    refreshHealth();
+    refreshTasks();             // startowo Task-Killer
+    setInterval(refreshHealth, 2000);
+  }
+  if (window.pywebview) start();
+  else window.addEventListener('pywebviewready', start);
+</script>
+
+</body>
+</html>

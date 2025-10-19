@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign in</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="bg-vignette"></div>
+
+  <div class="page-wrap">
+    <button class="back-btn" aria-label="Back"><span class="chevron">‹</span> Back</button>
+
+    <div class="auth-card">
+      <div class="logo-wrap">
+        <div class="logo-dot"><div class="logo-ring"></div></div>
+      </div>
+
+      <h1 class="title">Yooo, welcome back!</h1>
+      <p class="subtitle">
+        First time here?
+        <a href="register.html" class="link">Sign up for free</a>
+      </p>
+
+      <form class="form" id="loginForm" autocomplete="on">
+        <label class="input-wrap"><input id="loginEmail" type="email" placeholder="Your email" required /></label>
+        <label class="input-wrap"><input id="loginPass" type="password" placeholder="••••••••" required /></label>
+
+        <label class="opt" style="display:flex; gap:8px; align-items:center; justify-content:flex-start; margin-top:4px;">
+          <input id="rememberMe" type="checkbox" checked />
+          <span>Remember me</span>
+        </label>
+
+        <button type="submit" class="btn btn-primary" style="margin-top:6px;">Sign in</button>
+
+        <a class="link magic-link" href="#">Sign in using magic link</a>
+        <div class="divider"><span>or</span></div>
+        <button type="button" class="btn btn-ghost">Single sign-on (SSO)</button>
+      </form>
+
+      <p class="terms">
+        You acknowledge that you read, and agree, to our
+        <a href="#" class="link">Terms of Service</a> and our
+        <a href="#" class="link">Privacy Policy</a>.
+      </p>
+    </div>
+  </div>
+
+  <script>
+
+    async function prefillFromDisk(){
+      try{
+        if(!window.pywebview?.api) return;
+        const u = await window.pywebview.api.get_user();
+        if(u && u.email){
+          document.getElementById('loginEmail').value = u.email || '';
+          document.getElementById('loginPass').value = u.password || '';
+          document.getElementById('rememberMe').checked = !!u.remember;
+          if(u.remember){
+            doLogin(u.email, u.password, true);
+          }
+        }
+      }catch(e){}
+    }
+
+    async function doLogin(email, pass, rememberFlag){
+
+      if(window.pywebview?.api){
+        const res = await window.pywebview.api.login(email, pass, !!rememberFlag);
+        if(res?.ok){
+          const u = res.user || {email, password: pass};
+          localStorage.setItem('arch_auth_user', JSON.stringify(u));
+          localStorage.setItem('arch_is_logged_in', '1');
+          location.href = 'dashboard.html';
+          return;
+        }else{
+          alert('Invalid credentials.');
+          return;
+        }
+      }
+
+      const raw = localStorage.getItem('arch_auth_user');
+      if(!raw){ alert('No account found. Please Sign up first.'); return; }
+      const u = JSON.parse(raw);
+      if(u.email === email && u.password === pass){
+        u.remember = !!rememberFlag;
+        localStorage.setItem('arch_auth_user', JSON.stringify(u));
+        localStorage.setItem('arch_is_logged_in', '1');
+        location.href = 'dashboard.html';
+      }else{
+        alert('Invalid credentials.');
+      }
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+      const pass  = document.getElementById('loginPass').value;
+      const remember = document.getElementById('rememberMe').checked;
+      doLogin(email, pass, remember);
+    });
+
+    if (window.pywebview) prefillFromDisk();
+    else window.addEventListener('pywebviewready', prefillFromDisk);
+  </script>
+</body>
+</html>

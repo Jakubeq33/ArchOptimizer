@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign up</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="bg-vignette"></div>
+
+  <div class="page-wrap">
+    <a class="back-btn" href="index.html" aria-label="Back"><span class="chevron">‹</span> Back</a>
+
+    <div class="auth-card">
+      <div class="logo-wrap">
+        <div class="logo-dot"><div class="logo-ring"></div></div>
+      </div>
+
+      <h1 class="title">Create your account</h1>
+      <p class="subtitle">Already have one? <a href="index.html" class="link">Sign in</a></p>
+
+      <!-- Avatar uploader -->
+      <div class="avatar-uploader">
+        <label class="avatar-label" for="avatarInput">
+          <img id="avatarPreview" class="avatar-img" alt="Avatar preview" />
+          <span class="avatar-hint">Upload photo</span>
+        </label>
+        <input id="avatarInput" type="file" accept="image/*" hidden />
+      </div>
+
+      <form class="form" id="registerForm" autocomplete="on">
+        <label class="input-wrap"><input id="regName" type="text" placeholder="Your name" required /></label>
+        <label class="input-wrap"><input id="regEmail" type="email" placeholder="Your email" required /></label>
+        <label class="input-wrap"><input id="regPass" type="password" placeholder="Create a password" required /></label>
+        <button type="submit" class="btn btn-primary">Create account</button>
+      </form>
+
+      <p class="terms">
+        By continuing, you agree to our
+        <a href="#" class="link">Terms</a> and <a href="#" class="link">Privacy</a>.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    const input = document.getElementById('avatarInput');
+    const preview = document.getElementById('avatarPreview');
+    let avatarDataUrl = '';
+
+    input.addEventListener('change', () => {
+      const file = input.files?.[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        avatarDataUrl = reader.result;
+        preview.src = avatarDataUrl;
+        preview.classList.add('has-image');
+      };
+      reader.readAsDataURL(file);
+    });
+    document.querySelector('.avatar-label').addEventListener('click', () => input.click());
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name  = document.getElementById('regName').value.trim();
+      const email = document.getElementById('regEmail').value.trim().toLowerCase();
+      const pass  = document.getElementById('regPass').value;
+
+      const user = { name, email, password: pass, avatar: avatarDataUrl, remember: true };
+
+      // 1) trwały zapis do user.json (pywebview)
+      if (window.pywebview?.api) {
+        const res = await window.pywebview.api.save_user(user);
+        if (!res?.ok) { alert('Save error: ' + (res?.reason || 'unknown')); return; }
+      }
+
+      // 2) kopia w localStorage
+      localStorage.setItem('arch_auth_user', JSON.stringify(user));
+      localStorage.setItem('arch_is_logged_in', '1');
+
+      location.href = 'dashboard.html';
+    });
+  </script>
+</body>
+</html>
